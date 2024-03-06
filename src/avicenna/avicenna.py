@@ -7,7 +7,7 @@ from isla.language import ISLaUnparser, Formula
 from islearn.language import parse_abstract_isla
 from islearn.learner import patterns_from_file
 
-from avicenna import feature_extractor
+from avicenna import feature_extractor, pattern_selector
 from avicenna.feature_collector import GrammarFeatureCollector
 from avicenna.generator import (
     ISLaGrammarBasedGenerator,
@@ -258,11 +258,16 @@ class Avicenna:
         test_inputs = self.construct_inputs(test_inputs)
         exclusion_non_terminals = self.learn_relevant_features()
 
+        # 2024-03-06 naive approach: allow selection of certain patterns, that are then used
+        # TODO implement solution that uses knowledge for better selection
+        activated_patterns = pattern_selector.select_patterns()
+
         new_candidates = self.pattern_learner.learn_failure_invariants(
             test_inputs,
             self.precision_truth_table,
             self.recall_truth_table,
             exclusion_non_terminals,
+            activated_patterns
         )
 
         new_candidates = new_candidates.keys()

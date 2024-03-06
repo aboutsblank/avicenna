@@ -194,15 +194,11 @@ class AviIslearn(InvariantLearner):
         grammar: Grammar,
         pattern_file: Optional[str] = None,
         patterns: Optional[List[Formula]] = None,
-        activated_patterns: Optional[Iterable[str]] = None,
-        deactivated_patterns: Optional[Iterable[str]] = None,
     ):
         super().__init__(
             grammar,
             patterns=patterns,
             pattern_file=pattern_file,
-            activated_patterns=activated_patterns,
-            deactivated_patterns=deactivated_patterns,
         )
         self.all_negative_inputs: Set[Input] = set()
         self.all_positive_inputs: Set[Input] = set()
@@ -211,6 +207,9 @@ class AviIslearn(InvariantLearner):
     def initialize_attributes(self, grammar: Grammar):
         self.graph = gg.GrammarGraph.from_grammar(grammar)
         self.exclude_nonterminals: Set[str] = set()
+        # 2024-06-03 AviIsLearn is initiated once in avicenna, however we want to be able to active patterns every cycle
+        # question remains if variable or parameter
+        self.activated_patterns: Set[str] = set()  # TODO is an empty set ok?
         self.positive_examples_for_learning: List[language.DerivationTree] = []
 
     def learn_failure_invariants(
@@ -219,12 +218,18 @@ class AviIslearn(InvariantLearner):
         precision_truth_table: AvicennaTruthTable,
         recall_truth_table: AvicennaTruthTable,
         exclude_nonterminals: Optional[Iterable[str]] = None,
+        activated_patterns: Optional[Iterable[str]] = None
     ):
         positive_inputs, negative_inputs = self.categorize_inputs(test_inputs)
         self.update_inputs(positive_inputs, negative_inputs)
         self.exclude_nonterminals = exclude_nonterminals or set()
+
+        # TODO default should be all patterns from pattern file
+        # self.activated_patterns = activated_patterns or set()
+        # TODO format activated_patterns to language.Formula
+
         return self._learn_invariants(
-            positive_inputs, negative_inputs, precision_truth_table, recall_truth_table
+            positive_inputs, negative_inputs, precision_truth_table, recall_truth_table, activated_patterns
         )
 
     @staticmethod
@@ -247,9 +252,11 @@ class AviIslearn(InvariantLearner):
         negative_inputs: Set[Input],
         precision_truth_table: AvicennaTruthTable,
         recall_truth_table: AvicennaTruthTable,
+        activated_patterns: Set[language.Formula]  # TODO type hinting
     ):
         sorted_positive_inputs = self.sort_and_filter_inputs(self.all_positive_inputs)
-        candidates = self.get_candidates(sorted_positive_inputs)
+        # 2024-03-06 TODO activated_patterns as instance_variable or function parameter ?
+        candidates = self.get_candidates(sorted_positive_inputs, activated_patterns)
 
         self.evaluate_recall(candidates, recall_truth_table, positive_inputs)
         self.filter_candidates(precision_truth_table, recall_truth_table)
@@ -272,9 +279,11 @@ class AviIslearn(InvariantLearner):
             recall_truth_table.remove(row)
             precision_truth_table.remove(row)
 
-    def get_candidates(self, sorted_positive_inputs):
+    def get_candidates(self, sorted_positive_inputs, activated_patterns):
         candidates = self.generate_candidates(
-            self.patterns, [inp.tree for inp in sorted_positive_inputs]
+            # 2024-03-06 only feed activated patterns to candidate generation
+            patterns=activated_patterns,
+            inputs=[inp.tree for inp in sorted_positive_inputs]
         )
         logger.info("Found %d invariant candidates.", len(candidates))
         return candidates
