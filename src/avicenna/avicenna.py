@@ -69,13 +69,15 @@ class Avicenna:
             program behavior as `oracle.BUG` or `oracle.NO_BUG`.
         :param initial_inputs: An initial input corpus as strings.
             At least one behavior-triggering input is required.
-        :param patterns: A List of patterns that will be used to explain the program behavior.
+        :param patterns: A List of patterns that will be used to explain the program behavior. See 'pattern_file' for
+            default behaviour.
         :param max_iterations: The maximum number of iteration of the refinement loop.
         :param top_n_relevant_features: The number of *relevant* features during the
             constraint and pattern matching step. The number heavily influences the
             computational overhead of Avicenna. Avicenna will use this number to limit the
             amount of non-terminals that are relevant for describing the program behavior.
-        :param pattern_file: A pattern repository with possible patterns.
+        :param pattern_file: A pattern repository with possible patterns. Will be used if 'patterns' is not defined.
+            The default pattern catalogue can be found in # TODO specify location of pattern repo
         :param max_conjunction_size: The maximum number of conjunctions in a learned constraint.
             The higher the number, the higher the computational overhead.
         :param use_multi_failure_report:
