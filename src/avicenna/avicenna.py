@@ -9,6 +9,7 @@ from islearn.learner import patterns_from_file
 
 from avicenna import feature_extractor, pattern_selector
 from avicenna.feature_collector import GrammarFeatureCollector
+from avicenna.features import Feature
 from avicenna.generator import (
     ISLaGrammarBasedGenerator,
     FuzzingbookBasedGenerator,
@@ -20,6 +21,7 @@ from avicenna.pattern_learner import (
     AvicennaTruthTable,
     AviIslearn,
 )
+from avicenna.pattern_selector import SelectionMode, PatternSelector
 from avicenna_formalizations import get_pattern_file_path
 from avicenna.execution_handler import SingleExecutionHandler, BatchExecutionHandler
 from avicenna.report import SingleFailureReport, MultipleFailureReport
@@ -55,6 +57,7 @@ class Avicenna:
         log: bool = False,
         feature_learner: feature_extractor.RelevantFeatureLearner = None,
         timeout: int = 3600,
+        pattern_selection_mode: SelectionMode = "ALL"
     ):
         """
         The constructor of :class:`~avicenna.Avicenna.` accepts a large number of
@@ -138,6 +141,11 @@ class Avicenna:
                 else parse_abstract_isla(pattern, grammar)
                 for pattern in patterns
             ]
+
+        self.pattern_selector = PatternSelector(
+            pattern_selection_mode, pattern_file=str(self.pattern_file), patterns=self.patterns
+        )
+        # self.pattern_selection_mode = pattern_selection_mode
 
         self.pattern_learner = AviIslearn(
             grammar, pattern_file=str(self.pattern_file), patterns=self.patterns
@@ -240,7 +248,7 @@ class Avicenna:
         )
         return result
 
-    def learn_relevant_features(self) -> List[str]:
+    def learn_relevant_features(self) -> tuple[list[str], set[Feature], set[Feature], set[Feature]]:
         """Learn prominent and correlated features."""
         relevant, correlated, excluded_features = self.feature_learner.learn(
             self.all_inputs
@@ -252,15 +260,17 @@ class Avicenna:
             non_terminal
             for non_terminal in self.grammar
             if non_terminal not in combined_prominent_non_terminals
-        ]
+        ], relevant, correlated, excluded_features
 
     def _loop(self, test_inputs: Set[Input]):
         test_inputs = self.construct_inputs(test_inputs)
-        exclusion_non_terminals = self.learn_relevant_features()
+        # learn_relevant_features returns Feature objects so we should be able to get the specific type
+        exclusion_non_terminals, relevant, correlated, excluded = self.learn_relevant_features()
 
         # 2024-03-06 naive approach: allow selection of certain patterns, that are then used
         # TODO implement solution that uses knowledge for better selection
-        activated_patterns = pattern_selector.select_patterns()
+        # TODO attention: the arguments we are providing are features not patterns currently
+        activated_patterns = self.pattern_selector.select(relevant, correlated, excluded)
 
         new_candidates = self.pattern_learner.learn_failure_invariants(
             test_inputs,

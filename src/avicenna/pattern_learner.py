@@ -209,7 +209,7 @@ class AviIslearn(InvariantLearner):
         self.exclude_nonterminals: Set[str] = set()
         # 2024-06-03 AviIsLearn is initiated once in avicenna, however we want to be able to active patterns every cycle
         # question remains if variable or parameter
-        self.activated_patterns: Set[str] = set()  # TODO is an empty set ok?
+        self.activated_patterns = set()  # TODO is an empty set ok?
         self.positive_examples_for_learning: List[language.DerivationTree] = []
 
     def learn_failure_invariants(
